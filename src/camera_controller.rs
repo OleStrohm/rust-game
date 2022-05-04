@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::math::Vec3Swizzles;
 
 use crate::player::Player;
 
@@ -17,5 +18,5 @@ fn follow_player(
     let mut camera = camera.single_mut();
     let player = player.single();
 
-    camera.translation = player.translation;
+    camera.translation = player.translation.xy().extend(999.9);
 }
