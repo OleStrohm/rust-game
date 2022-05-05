@@ -28,6 +28,7 @@ pub struct DebugMaterialUniform {
 #[uuid = "0b1ad73c-8919-48f5-8e19-d05292791f47"]
 pub struct DebugMaterial {
     pub color: Color,
+    pub radius: f32,
 }
 
 impl RenderAsset for DebugMaterial {

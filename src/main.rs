@@ -6,10 +6,12 @@ use bevy_inspector_egui::{RegisterInspectable, WorldInspectorPlugin};
 use player::PlayerPlugin;
 
 use self::camera_controller::CameraControllerPlugin;
+use self::cursor::CursorPlugin;
 use self::debug::DebugMaterial;
 use self::player::Player;
 
 mod camera_controller;
+mod cursor;
 mod debug;
 mod player;
 
@@ -27,16 +29,10 @@ fn main() {
         .add_plugin(WorldInspectorPlugin::new())
         .add_plugin(Material2dPlugin::<DebugMaterial>::default())
         .register_inspectable::<Player>()
-        .insert_resource(MousePos {
-            x: 0.0,
-            y: 0.0,
-            screen_x: 0.0,
-            screen_y: 0.0,
-        })
-        .add_startup_system(setup)
-        .add_system(update_mouse_pos)
         .add_plugin(CameraControllerPlugin)
+        .add_plugin(CursorPlugin)
         .add_plugin(PlayerPlugin)
+        .add_startup_system(setup)
         .run();
 }
 
@@ -67,40 +63,11 @@ fn setup(
 
     commands.spawn().insert_bundle(MaterialMesh2dBundle {
         mesh: meshes.add(Mesh::from(shape::Quad::default())).into(),
-        material: materials.add(DebugMaterial { color: Color::RED }),
+        material: materials.add(DebugMaterial {
+            color: Color::RED,
+            radius: 10.0,
+        }),
         transform: Transform::default(),
         ..Default::default()
     });
-}
-
-pub struct MousePos {
-    x: f32,
-    y: f32,
-    #[allow(dead_code)]
-    screen_x: f32,
-    #[allow(dead_code)]
-    screen_y: f32,
-}
-
-fn update_mouse_pos(
-    windows: Res<Windows>,
-    mut mouse_moved_event: EventReader<CursorMoved>,
-    mut mouse_pos: ResMut<MousePos>,
-    camera: Query<&Transform, With<Camera>>,
-) {
-    for ev in mouse_moved_event.iter() {
-        let window = windows.get_primary().unwrap();
-        let width = window.width();
-        let height = window.height();
-        let (mx, my) = (ev.position.x, ev.position.y);
-        let mx = 2.0 * CAMERA_SIZE * (mx - width / 2.0) / height;
-        let my = 2.0 * CAMERA_SIZE * (my - height / 2.0) / height;
-        mouse_pos.screen_x = mx;
-        mouse_pos.screen_y = my;
-    }
-
-    let camera_translation = camera.single().translation;
-
-    mouse_pos.x = mouse_pos.screen_x + camera_translation.x;
-    mouse_pos.y = mouse_pos.screen_y + camera_translation.y;
 }

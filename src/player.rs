@@ -1,4 +1,4 @@
-use crate::MousePos;
+use crate::cursor::{CursorState, Cursor, MousePos};
 use bevy::math::Vec3Swizzles;
 use bevy::prelude::*;
 use bevy_inspector_egui::Inspectable;
@@ -7,14 +7,7 @@ use std::time::Duration;
 
 const COMPASS_SPRITE: &str = "compass.png";
 const LASER_SPRITE: &str = "laser.png";
-const CURSOR_SPRITE: &str = "cursor.png";
 const ROCK_SPRITE: &str = "rock.png";
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum CursorState {
-    GameCursor,
-    UICursor,
-}
 
 #[derive(Component, Inspectable)]
 pub struct Player {
@@ -29,6 +22,9 @@ pub struct Laser {
 
 pub struct PlayerPlugin;
 
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, SystemLabel)]
+pub struct PlayerMoved;
+
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_state(CursorState::GameCursor)
@@ -38,18 +34,13 @@ impl Plugin for PlayerPlugin {
             .add_system_set(SystemSet::on_enter(CursorState::UICursor).with_system(to_ui_cursor))
             .add_system_set(SystemSet::on_update(CursorState::GameCursor).with_system(shoot))
             .add_startup_system(spawn_player)
-            .add_startup_system(spawn_mouse_cursor)
             .add_startup_system(spawn_some_rocks)
+            .add_system(move_player.label(PlayerMoved))
             .add_system(change_cursor_state)
-            .add_system(place_mouse_cursor)
-            .add_system(move_player)
             .add_system(on_hit_rock)
             .add_system(move_laser);
     }
 }
-
-#[derive(Component)]
-pub struct Cursor;
 
 #[derive(Component)]
 pub struct Rock;
@@ -124,28 +115,6 @@ pub fn to_ui_cursor(
     window.set_cursor_visibility(true);
 }
 
-fn place_mouse_cursor(mut cursor: Query<&mut Transform, With<Cursor>>, mouse_pos: Res<MousePos>) {
-    let mut cursor = cursor.single_mut();
-    cursor.translation = Vec3::new(mouse_pos.x, mouse_pos.y, 0.1);
-}
-
-fn spawn_mouse_cursor(mut commands: Commands, assets: Res<AssetServer>) {
-    let image = assets.load(CURSOR_SPRITE);
-
-    commands
-        .spawn_bundle(SpriteBundle {
-            transform: Transform {
-                translation: Vec3::splat(0.0),
-                scale: Vec3::splat(1.0 / 128.0),
-                ..Default::default()
-            },
-            texture: image,
-            ..Default::default()
-        })
-        .insert(Cursor)
-        .insert(Name::new("Cursor"));
-}
-
 fn spawn_player(mut commands: Commands, assets: Res<AssetServer>) {
     let image = assets.load(COMPASS_SPRITE);
 
@@ -209,7 +178,7 @@ fn move_laser(
     }
 }
 
-fn move_player(
+pub fn move_player(
     mut query: Query<(&Player, &mut Transform)>,
     keyboard: Res<Input<KeyCode>>,
     mouse_pos: Res<MousePos>,
