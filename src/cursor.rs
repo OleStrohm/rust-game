@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 
-use crate::camera_controller::CameraMoved;
-use crate::CAMERA_SIZE;
+use crate::camera_controller::{CameraMoved, CAMERA_SIZE};
 
 const CURSOR_SPRITE: &str = "cursor.png";
 

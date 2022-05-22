@@ -1,20 +1,109 @@
-//#import bevy_sprite::mesh2d_view_bind_group
-//#import bevy_sprite::mesh2d_struct
-//
-//struct View {
-//    view_proj: mat4x4<f32>;
-//    world_position: vec3<f32>;
-//};
-//[[group(0), binding(0)]]
-//var<uniform> view: View;
+struct VertexOutput {
+    [[builtin(position)]] clip_position: vec4<f32>;
+    [[location(0)]] world_position: vec4<f32>;
+    [[location(1)]] world_normal: vec3<f32>;
+    [[location(2)]] uv: vec2<f32>;
+};
 
-struct DebugMaterial {
+struct Circle {
     color: vec4<f32>;
+    center: vec3<f32>;
+    radius: f32;
+};
+struct Circles {
+    circles: array<Circle>;
 };
 [[group(1), binding(0)]]
-var<uniform> material: DebugMaterial;
+var<storage> circles: Circles;
+
+struct Line {
+    color: vec4<f32>;
+    start: vec2<f32>;
+    end: vec2<f32>;
+};
+struct Lines {
+    lines: array<Line>;
+};
+[[group(1), binding(1)]]
+var<storage> lines: Lines;
+
+fn circle(st: vec2<f32>, center: vec2<f32>, radius: f32) -> f32 {
+    let dist = st-center;
+    return smoothStep(radius*radius-(radius*0.01),
+                      radius*radius+(radius*0.01),
+                      dot(dist, dist));
+}
+
+fn circlearc(st: vec2<f32>, center: vec2<f32>, radius: f32) -> f32 {
+    let dist = st-center;
+    let len = dot(dist, dist);
+    let size = 0.01;
+    let buffer = 0.01;
+
+    let outer = smoothStep(
+                      (radius + size + buffer)*(radius + size + buffer),
+                      (radius + size - buffer)*(radius + size - buffer),
+                      len);
+    let inner = smoothStep(
+                      (radius - size - buffer)*(radius - size - buffer),
+                      (radius - size + buffer)*(radius - size + buffer),
+                      len);
+    return outer * inner;
+}
+
+fn line(st: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>) -> f32 {
+    let buffer = 0.02;
+
+    let r = normalize(p2 - p1);
+    let n = vec2<f32>(-r.y, r.x);
+    let d = st - p1;
+    let dist = dot(n, st - p1);
+    let line = smoothStep(buffer, 0.0, abs(dist));
+    let inside_p1 = smoothStep(-buffer, buffer, dot(r, st - p1));
+    let inside_p2 = smoothStep(-buffer, buffer, dot(-r, st - p2));
+    return line * inside_p1 * inside_p2;
+}
+
+fn mix_with_alpha(a: vec4<f32>, b: vec4<f32>) -> vec4<f32> {
+    let alpha = 1.0 - (1.0 - a.a) * (1.0 - b.a);
+    let color = (a.rgb * a.a * (1.0 - b.a) + b.rgb * b.a * (1.0 - a.a)) / (alpha);
+    return vec4<f32>(color, alpha);
+}
 
 [[stage(fragment)]]
-fn fragment() -> [[location(0)]] vec4<f32> {
-    return material.color;
+fn fragment(in: VertexOutput) -> [[location(0)]] vec4<f32> {
+    var res = vec4<f32>(0.0, 0.0, 0.0, 0.0);
+
+    var line_col = vec3<f32>(0.3, 1.0, 0.3);
+
+    let num_circles: u32 = arrayLength(&circles.circles);
+    for (var i: u32 = 0u; i < num_circles; i = i + 1u) {
+        let c = circles.circles[i];
+        let alpha = circlearc(in.world_position.xy, c.center.xy, c.radius);
+        res = mix_with_alpha(res, vec4<f32>(c.color.rgb, alpha));
+    }
+
+    res = mix_with_alpha(res, vec4<f32>(1.0, 0.0, 1.0, circlearc(in.world_position.xy,
+    vec2<f32>(0.0, 0.0), 1.0)));
+
+    res = mix_with_alpha(res, vec4<f32>(1.0, 0.0, 1.0, circlearc(in.world_position.xy,
+    vec2<f32>(2.0, 2.0), 1.0)));
+
+    let num_lines: u32 = arrayLength(&lines.lines);
+    for (var i: u32 = 0u; i < num_lines; i = i + 1u) {
+        let l = lines.lines[i];
+        let alpha = line(in.world_position.xy, l.start, l.end);
+        res = mix_with_alpha(res, vec4<f32>(l.color.rgb, alpha));
+    }
+
+    res = mix_with_alpha(res, vec4<f32>(vec3<f32>(0.3, 1.0, 0.3), line(in.world_position.xy,
+    vec2<f32>(-0.5, 1.5), vec2<f32>(-0.0, 1.5))));
+
+    res = mix_with_alpha(res, vec4<f32>(1.0, 1.0, 1.0, line(in.world_position.xy,
+    vec2<f32>(0.0, 1.0), vec2<f32>(0.0, 1.3))));
+
+    res = mix_with_alpha(res, vec4<f32>(1.0, 1.0, 1.0, line(in.world_position.xy,
+    vec2<f32>(0.0, 2.0), vec2<f32>(2.0, 0.0))));
+
+    return res;
 }

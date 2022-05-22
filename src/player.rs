@@ -1,6 +1,8 @@
-use crate::cursor::{CursorState, Cursor, MousePos};
+use crate::cursor::{Cursor, CursorState, MousePos};
+use crate::debug::{DebugCircle, DebugLineData, DebugRect};
 use bevy::math::Vec3Swizzles;
 use bevy::prelude::*;
+use bevy_inspector_egui::bevy_egui::EguiContext;
 use bevy_inspector_egui::Inspectable;
 use std::f32::consts::PI;
 use std::time::Duration;
@@ -32,11 +34,18 @@ impl Plugin for PlayerPlugin {
                 SystemSet::on_enter(CursorState::GameCursor).with_system(to_game_cursor),
             )
             .add_system_set(SystemSet::on_enter(CursorState::UICursor).with_system(to_ui_cursor))
-            .add_system_set(SystemSet::on_update(CursorState::GameCursor).with_system(shoot))
+            .add_system_set(
+                SystemSet::on_update(CursorState::UICursor).with_system(change_cursor_state),
+            )
+            .add_system_set(
+                SystemSet::on_update(CursorState::GameCursor)
+                    .with_system(shoot)
+                    .with_system(change_cursor_state),
+            )
             .add_startup_system(spawn_player)
             .add_startup_system(spawn_some_rocks)
             .add_system(move_player.label(PlayerMoved))
-            .add_system(change_cursor_state)
+            .add_system(spawn_some_rocks_on_space)
             .add_system(on_hit_rock)
             .add_system(move_laser);
     }
@@ -44,6 +53,16 @@ impl Plugin for PlayerPlugin {
 
 #[derive(Component)]
 pub struct Rock;
+
+fn spawn_some_rocks_on_space(
+    commands: Commands,
+    assets: Res<AssetServer>,
+    input: Res<Input<KeyCode>>,
+) {
+    if input.just_pressed(KeyCode::Space) {
+        spawn_some_rocks(commands, assets);
+    }
+}
 
 fn spawn_some_rocks(mut commands: Commands, assets: Res<AssetServer>) {
     let image = assets.load(ROCK_SPRITE);
@@ -57,13 +76,26 @@ fn spawn_some_rocks(mut commands: Commands, assets: Res<AssetServer>) {
                         6. * rand::random::<f32>() - 3.,
                         0.1,
                     ),
-                    scale: Vec3::splat(1.0 / 64.0),
+                    scale: Vec3::splat(0.25),
                     ..Default::default()
                 },
                 texture: image.clone(),
+                sprite: Sprite {
+                    custom_size: Some((1.0, 1.0).into()),
+                    ..Default::default()
+                },
                 ..Default::default()
             })
             .insert(Rock)
+            .insert(DebugCircle {
+                color: Color::BLUE,
+                radius: 1.0 / 4.0,
+            })
+            .insert(DebugRect {
+                color: Color::GREEN,
+                rotation: 0.0,
+                size: (1.0 / 4.0, 1.0 / 4.0).into(),
+            })
             .insert(Name::new("Rock"));
     }
 }
@@ -85,16 +117,16 @@ fn on_hit_rock(
 
 fn change_cursor_state(
     mut cursor_state: ResMut<State<CursorState>>,
-    mut input: ResMut<Input<KeyCode>>,
+    mut egui_context: ResMut<EguiContext>,
 ) {
-    if input.just_pressed(KeyCode::E) {
-        let new_state = match cursor_state.current() {
-            CursorState::GameCursor => CursorState::UICursor,
-            CursorState::UICursor => CursorState::GameCursor,
-        };
+    let new_state = if egui_context.ctx_mut().is_pointer_over_area() {
+        CursorState::UICursor
+    } else {
+        CursorState::GameCursor
+    };
+    if &new_state != cursor_state.current() {
         cursor_state.set(new_state).unwrap();
     }
-    input.clear();
 }
 
 pub fn to_game_cursor(
@@ -122,14 +154,23 @@ fn spawn_player(mut commands: Commands, assets: Res<AssetServer>) {
         .spawn_bundle(SpriteBundle {
             transform: Transform {
                 translation: Vec3::new(0., 0., 0.9),
-                scale: Vec3::splat(1.0 / 32.0),
+                scale: Vec3::splat(1.0 / 16.0),
                 ..Default::default()
             },
             texture: image,
             ..Default::default()
         })
-        .insert(Player { speed: 2.0 })
-        .insert(Name::new("Player"));
+        .insert(Player { speed: 4.0 })
+        .insert(Name::new("Player"))
+        .insert(DebugCircle {
+            color: Color::GREEN,
+            radius: 0.5,
+        })
+        .insert(DebugRect {
+            color: Color::RED,
+            rotation: 0.0,
+            size: (2.0, 1.0).into(),
+        });
 }
 
 fn shoot(
@@ -158,7 +199,11 @@ fn shoot(
                 lifetime: Duration::from_secs(1),
                 origin: time.time_since_startup(),
             })
-            .insert(Name::new("Player Laser"));
+            .insert(Name::new("Player Laser"))
+            .insert(DebugCircle {
+                color: Color::BLUE,
+                radius: 0.2,
+            });
     }
 }
 
