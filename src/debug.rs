@@ -98,6 +98,15 @@ pub struct DebugCircle {
     pub radius: f32,
 }
 
+impl Default for DebugCircle {
+    fn default() -> Self {
+        DebugCircle {
+            color: Color::RED,
+            radius: 0.5,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Default, AsStd430)]
 pub struct DebugCircleData {
     pub color: Vec4,
@@ -110,6 +119,16 @@ pub struct DebugRect {
     pub color: Color,
     pub rotation: f32,
     pub size: Vec2,
+}
+
+impl Default for DebugRect {
+    fn default() -> Self {
+        DebugRect {
+            color: Color::RED,
+            rotation: 0.0,
+            size: Vec2::splat(1.0),
+        }
+    }
 }
 
 impl DebugRect {

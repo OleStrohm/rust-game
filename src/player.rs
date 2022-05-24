@@ -1,5 +1,5 @@
 use crate::cursor::{Cursor, CursorState, MousePos};
-use crate::debug::{DebugCircle, DebugLineData, DebugRect};
+use crate::debug::{DebugCircle, DebugRect};
 use bevy::math::Vec3Swizzles;
 use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::EguiContext;
@@ -165,11 +165,6 @@ fn spawn_player(mut commands: Commands, assets: Res<AssetServer>) {
         .insert(DebugCircle {
             color: Color::GREEN,
             radius: 0.5,
-        })
-        .insert(DebugRect {
-            color: Color::RED,
-            rotation: 0.0,
-            size: (2.0, 1.0).into(),
         });
 }
 

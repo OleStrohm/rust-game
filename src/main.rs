@@ -7,6 +7,7 @@ use self::camera_controller::CameraControllerPlugin;
 use self::cursor::CursorPlugin;
 use self::debug::DebugPlugin;
 use self::player::Player;
+use self::tilemap::{TileMapPlugin, TileKind};
 
 mod camera_controller;
 mod cursor;
@@ -25,8 +26,10 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(WorldInspectorPlugin::new())
         .register_inspectable::<Player>()
+        .register_inspectable::<TileKind>()
         .add_plugin(CameraControllerPlugin)
         .add_plugin(CursorPlugin)
+        .add_plugin(TileMapPlugin)
         .add_plugin(PlayerPlugin)
         .add_plugin(DebugPlugin)
         .add_startup_system(setup)
