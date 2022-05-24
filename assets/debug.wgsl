@@ -65,16 +65,17 @@ fn line(st: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>) -> f32 {
 }
 
 fn mix_with_alpha(a: vec4<f32>, b: vec4<f32>) -> vec4<f32> {
-    let alpha = 1.0 - (1.0 - a.a) * (1.0 - b.a);
-    let color = (a.rgb * a.a * (1.0 - b.a) + b.rgb * b.a * (1.0 - a.a)) / (alpha);
+    var alpha = a.a + b.a + a.a * b.a;
+    var color = (a.rgb * a.a * (1.0 - b.a) + b.rgb * b.a) / (alpha);
+    if (a.a == 0.0) {
+        color = b.rgb;
+    }
     return vec4<f32>(color, alpha);
 }
 
 [[stage(fragment)]]
 fn fragment(in: VertexOutput) -> [[location(0)]] vec4<f32> {
     var res = vec4<f32>(0.0, 0.0, 0.0, 0.0);
-
-    var line_col = vec3<f32>(0.3, 1.0, 0.3);
 
     let num_circles: u32 = arrayLength(&circles.circles);
     for (var i: u32 = 0u; i < num_circles; i = i + 1u) {
@@ -83,27 +84,12 @@ fn fragment(in: VertexOutput) -> [[location(0)]] vec4<f32> {
         res = mix_with_alpha(res, vec4<f32>(c.color.rgb, alpha));
     }
 
-    res = mix_with_alpha(res, vec4<f32>(1.0, 0.0, 1.0, circlearc(in.world_position.xy,
-    vec2<f32>(0.0, 0.0), 1.0)));
-
-    res = mix_with_alpha(res, vec4<f32>(1.0, 0.0, 1.0, circlearc(in.world_position.xy,
-    vec2<f32>(2.0, 2.0), 1.0)));
-
     let num_lines: u32 = arrayLength(&lines.lines);
     for (var i: u32 = 0u; i < num_lines; i = i + 1u) {
         let l = lines.lines[i];
         let alpha = line(in.world_position.xy, l.start, l.end);
         res = mix_with_alpha(res, vec4<f32>(l.color.rgb, alpha));
     }
-
-    res = mix_with_alpha(res, vec4<f32>(vec3<f32>(0.3, 1.0, 0.3), line(in.world_position.xy,
-    vec2<f32>(-0.5, 1.5), vec2<f32>(-0.0, 1.5))));
-
-    res = mix_with_alpha(res, vec4<f32>(1.0, 1.0, 1.0, line(in.world_position.xy,
-    vec2<f32>(0.0, 1.0), vec2<f32>(0.0, 1.3))));
-
-    res = mix_with_alpha(res, vec4<f32>(1.0, 1.0, 1.0, line(in.world_position.xy,
-    vec2<f32>(0.0, 2.0), vec2<f32>(2.0, 0.0))));
 
     return res;
 }

@@ -12,6 +12,7 @@ mod camera_controller;
 mod cursor;
 mod debug;
 mod player;
+mod tilemap;
 
 fn main() {
     App::new()
